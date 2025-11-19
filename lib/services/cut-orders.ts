@@ -1,6 +1,6 @@
 import { supabase } from "@/lib/supabase-client";
 import { Bundle, BundleHistoryEntry, CutOrder } from "@/types/cut-order";
-import { isValidLocationCode } from "@/constants/locations";
+import { isValidLocationCode, type LocationCode } from "@/constants/locations";
 
 const DATE_FORMATTER = new Intl.DateTimeFormat("es-AR", {
   day: "2-digit",
@@ -267,7 +267,7 @@ export type CreateCutOrderInput = {
   bundles: CreateBundleInput[];
 };
 
-const normalizeLocationCode = (value?: string) => {
+const normalizeLocationCode = (value?: string): LocationCode | null => {
   if (!value) return null;
   const normalized = value.trim().toUpperCase();
   if (!normalized.length) return null;
@@ -337,7 +337,7 @@ export async function createCutOrder(input: CreateCutOrderInput) {
 
   const locationCodes = input.bundles
     .map((bundle) => normalizeLocationCode(bundle.currentLocation))
-    .filter((code): code is string => Boolean(code));
+    .filter((code): code is LocationCode => Boolean(code));
 
   if (defaultLocationCode) {
     locationCodes.push(defaultLocationCode);
