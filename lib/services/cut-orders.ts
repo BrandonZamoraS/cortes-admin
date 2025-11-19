@@ -115,13 +115,20 @@ const normalizeHistory = (
       const dateB = b.fecha_hora ? new Date(b.fecha_hora).getTime() : 0;
       return dateA - dateB;
     })
-    .map((entry) => ({
-      action: entry.accion
+    .map((entry) => {
+      const actionLabel = entry.accion
         ? bundleActionLabels[entry.accion]
-        : "Actualización",
-      location: entry.ubicacion_destino?.codigo ?? "-",
-      date: formatDateTime(entry.fecha_hora),
-    }));
+        : "Actualización";
+      const displayLocation =
+        entry.accion === "asignar"
+          ? entry.numero_trabajo ?? "-"
+          : entry.ubicacion_destino?.codigo ?? "-";
+      return {
+        action: actionLabel,
+        location: displayLocation,
+        date: formatDateTime(entry.fecha_hora),
+      };
+    });
 };
 
 const mapBundle = (bundle: SupabaseBundle): Bundle => {
@@ -594,8 +601,9 @@ export async function applyBundleAction({
     }
   }
 
-  const normalizedOrder = orderNumber?.trim();
-  if (action === "asignar" && !normalizedOrder) {
+  const normalizedOrder = orderNumber?.trim() ?? "";
+  const historyWorkOrder = normalizedOrder || null;
+  if (action === "asignar" && !historyWorkOrder) {
     throw new Error("Ingresa un número de orden válido.");
   }
 
@@ -623,7 +631,7 @@ export async function applyBundleAction({
     bulto_id: bundleId,
     accion: action,
     ubicacion_destino_id: locationId,
-    numero_trabajo: action === "asignar" ? normalizedOrder : null,
+    numero_trabajo: action === "asignar" ? historyWorkOrder : null,
     fecha_hora: new Date().toISOString(),
   }));
 
