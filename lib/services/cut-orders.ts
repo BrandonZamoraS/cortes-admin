@@ -55,6 +55,8 @@ type SupabaseBundle = {
   ubicacion: SupabaseLocation | null;
   historial: SupabaseBundleHistory[] | null;
   creado_en?: string | null;
+  SSCC?: string | null;
+  LUID?: string | null;
 };
 
 type SupabaseCutOrder = {
@@ -156,6 +158,8 @@ const mapBundle = (bundle: SupabaseBundle): Bundle => {
     workOrder: latestWorkOrder,
     availability: statusInfo?.availability ?? "Sin estado",
     status: statusInfo?.badge ?? "Sin estado",
+    sscc: bundle.SSCC ?? "",
+    luid: bundle.LUID ?? "",
     history,
   };
 };
@@ -225,6 +229,8 @@ export async function fetchCutOrders(): Promise<CutOrder[]> {
           cantidad_laminas,
           estado,
           creado_en,
+          SSCC,
+          LUID,
           ubicacion:ubicaciones ( id, codigo ),
           historial:historial_bultos (
             id,
@@ -255,6 +261,8 @@ export type CreateBundleInput = {
   availability?: string;
   status?: string;
   history?: BundleHistoryEntry[];
+  sscc?: string;
+  luid?: string;
 };
 
 export type CreateCutOrderInput = {
@@ -379,6 +387,8 @@ export async function createCutOrder(input: CreateCutOrderInput) {
       ubicacion_id: locationId,
       cantidad_laminas: bundle.sheets ?? 0,
       estado: bundleStatusFromInput(bundle.status),
+      SSCC: bundle.sscc || null,
+      LUID: bundle.luid || null,
     };
   });
 
@@ -415,22 +425,48 @@ export async function createCutOrder(input: CreateCutOrderInput) {
   return orderId;
 }
 
+type BundleIdentifiersInput = {
+  sscc: string;
+  luid: string;
+};
+
 export async function splitBundle({
   bundleId,
   orderId,
   sheets,
+  originalIdentifiers,
+  newBundleIdentifiers,
 }: {
   bundleId: string;
   orderId: string;
   sheets: number;
+  originalIdentifiers: BundleIdentifiersInput;
+  newBundleIdentifiers: BundleIdentifiersInput;
 }) {
   if (sheets <= 0) {
     throw new Error("La cantidad debe ser mayor a cero.");
   }
 
+  const normalizeIdentifier = (value: string) => value.trim();
+  const normalizedOriginalSSCC = normalizeIdentifier(originalIdentifiers.sscc ?? "");
+  const normalizedOriginalLUID = normalizeIdentifier(originalIdentifiers.luid ?? "");
+  const normalizedSplitSSCC = normalizeIdentifier(newBundleIdentifiers.sscc ?? "");
+  const normalizedSplitLUID = normalizeIdentifier(newBundleIdentifiers.luid ?? "");
+
+  if (
+    !normalizedOriginalSSCC ||
+    !normalizedOriginalLUID ||
+    !normalizedSplitSSCC ||
+    !normalizedSplitLUID
+  ) {
+    throw new Error("Debes ingresar el SSCC y LUID para ambos bultos.");
+  }
+
   const { data: bundle, error: fetchError } = await supabase
     .from("bultos")
-    .select("id, orden_corte_id, numero_bulto, cantidad_laminas, ubicacion_id, estado")
+    .select(
+      "id, orden_corte_id, numero_bulto, cantidad_laminas, ubicacion_id, estado, SSCC, LUID",
+    )
     .eq("id", bundleId)
     .single();
 
@@ -479,7 +515,11 @@ export async function splitBundle({
   const remainingSheets = currentSheets - sheets;
   const { error: updateError } = await supabase
     .from("bultos")
-    .update({ cantidad_laminas: remainingSheets })
+    .update({
+      cantidad_laminas: remainingSheets,
+      SSCC: normalizedOriginalSSCC,
+      LUID: normalizedOriginalLUID,
+    })
     .eq("id", bundleId);
 
   if (updateError) {
@@ -510,6 +550,8 @@ export async function splitBundle({
       cantidad_laminas: sheets,
       ubicacion_id: bundle.ubicacion_id,
       estado: bundle.estado ?? DEFAULT_BUNDLE_STATUS,
+      SSCC: normalizedSplitSSCC,
+      LUID: normalizedSplitLUID,
     })
     .select("id");
 
@@ -559,6 +601,59 @@ export type ApplyBundleActionInput = {
   destinationCode?: string | null;
   orderNumber?: string | null;
 };
+
+async function checkAndUpdateOrderStatus(bundleIds: string[]) {
+  // Obtener las órdenes únicas de los bultos afectados
+  const { data: bundlesWithOrder, error: fetchError } = await supabase
+    .from("bultos")
+    .select("orden_corte_id")
+    .in("id", bundleIds);
+
+  if (fetchError || !bundlesWithOrder) {
+    // No lanzar error para no interrumpir el flujo principal
+    console.error("No se pudo verificar las órdenes:", fetchError?.message);
+    return;
+  }
+
+  const uniqueOrderIds = Array.from(
+    new Set(bundlesWithOrder.map((b) => b.orden_corte_id))
+  );
+
+  // Para cada orden, verificar si todos los bultos están utilizados
+  for (const orderId of uniqueOrderIds) {
+    const { data: orderBundles, error: bundlesError } = await supabase
+      .from("bultos")
+      .select("id, estado")
+      .eq("orden_corte_id", orderId);
+
+    if (bundlesError || !orderBundles || orderBundles.length === 0) {
+      continue;
+    }
+
+    // Verificar si todos los bultos están utilizados
+    const allUsed = orderBundles.every((bundle) => bundle.estado === "usado");
+    
+    // Verificar si hay al menos un bulto disponible o asignado
+    const hasAvailableOrAssigned = orderBundles.some(
+      (bundle) => bundle.estado === "disponible" || bundle.estado === "asignado"
+    );
+
+    // Si todos están utilizados (y no hay ninguno disponible o asignado), marcar orden como inactiva
+    if (allUsed && !hasAvailableOrAssigned) {
+      const { error: updateOrderError } = await supabase
+        .from("ordenes_corte")
+        .update({ activo: false })
+        .eq("id", orderId);
+
+      if (updateOrderError) {
+        console.error(
+          `No se pudo actualizar el estado de la orden ${orderId}:`,
+          updateOrderError.message
+        );
+      }
+    }
+  }
+}
 
 export async function applyBundleAction({
   bundleIds,
@@ -644,4 +739,7 @@ export async function applyBundleAction({
   if (historyError) {
     throw new Error(`No se pudo registrar el historial: ${historyError.message}`);
   }
+
+  // Verificar y actualizar el estado de la orden si todos los bultos están utilizados
+  await checkAndUpdateOrderStatus(bundleIds);
 }

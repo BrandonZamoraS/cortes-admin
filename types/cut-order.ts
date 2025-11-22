@@ -15,6 +15,8 @@ export type Bundle = {
   workOrder: string;
   availability: string;
   status: string;
+  sscc: string;
+  luid: string;
   history: BundleHistoryEntry[];
 };
 

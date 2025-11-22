@@ -78,10 +78,10 @@ export default function Home() {
 
   return (
     <div className="flex h-full w-full flex-col text-[var(--primary-dark)]">
-      <header className="shrink-0 border-b border-[color:rgba(0,0,0,0.08)] bg-[var(--primary-soft)] px-6 py-3 text-[var(--primary-dark)] shadow">
+      <header className="shrink-0 border-b border-[color:rgba(0,0,0,0.08)] bg-[var(--primary)] px-6 py-3 text-[var(--primary-dark)] shadow">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-3xl font-semibold text-[var(--primary)]">
+            <h1 className="text-3xl font-semibold text-white ">
               Control de Bultos
             </h1>
           </div>
@@ -90,7 +90,7 @@ export default function Home() {
             alt="Logo Comeca"
             width={120}
             height={48}
-            className="h-12 w-auto object-contain"
+            className="h-16 w-auto object-contain mr-4"
             priority
           />
         </div>

@@ -10,6 +10,8 @@ type BundleInput = {
   location: string;
   sheets: string;
   selected: boolean;
+  sscc: string;
+  luid: string;
 };
 
 type Props = {
@@ -26,6 +28,8 @@ const createBundles = (count: number, previous: BundleInput[] = []) => {
       location: existing?.location ?? "",
       sheets: existing?.sheets ?? "",
       selected: existing?.selected ?? false,
+      sscc: existing?.sscc ?? "",
+      luid: existing?.luid ?? "",
     };
   });
 };
@@ -106,6 +110,8 @@ export function AddCutOrderForm({ onCancel, onCreated }: Props) {
       name: bundle.name || `Bulto #${index + 1}`,
       currentLocation: bundle.location || allLocation || undefined,
       sheets: bundle.sheets ? Number(bundle.sheets) : undefined,
+      sscc: bundle.sscc,
+      luid: bundle.luid,
     }));
 
     try {
@@ -162,28 +168,31 @@ export function AddCutOrderForm({ onCancel, onCreated }: Props) {
               className="mt-2 w-full rounded-md border border-[var(--primary-muted)] px-4 py-2 text-sm text-[var(--primary-dark)] focus:border-[var(--primary)] focus:outline-none"
             />
           </div>
-          <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-[var(--primary)]">
-              Fecha
-            </label>
-            <input
-              type="date"
-              value={orderDate}
-              onChange={(event) => setOrderDate(event.target.value)}
-              className="mt-2 w-full rounded-md border border-[var(--primary-muted)] px-4 py-2 text-sm text-[var(--primary-dark)] focus:border-[var(--primary)] focus:outline-none"
-            />
-          </div>
-          <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-[var(--primary)]">
-              Cant. de bultos
-            </label>
-            <input
-              type="number"
-              min={0}
-              value={bundleCount}
-              onChange={(event) => handleBundleCountChange(event.target.value)}
-              className="mt-2 w-full rounded-md border border-[var(--primary-muted)] px-4 py-2 text-sm text-[var(--primary-dark)] focus:border-[var(--primary)] focus:outline-none"
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-semibold uppercase tracking-wide text-[var(--primary)]">
+                Fecha
+              </label>
+              <input
+                type="date"
+                value={orderDate}
+                onChange={(event) => setOrderDate(event.target.value)}
+                onClick={(e) => e.currentTarget.showPicker()}
+                className="mt-2 w-full rounded-md border border-[var(--primary-muted)] px-4 py-2 text-sm text-[var(--primary-dark)] focus:border-[var(--primary)] focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold uppercase tracking-wide text-[var(--primary)]">
+                Cant. de bultos
+              </label>
+              <input
+                type="number"
+                min={0}
+                value={bundleCount}
+                onChange={(event) => handleBundleCountChange(event.target.value)}
+                className="mt-2 w-full rounded-md border border-[var(--primary-muted)] px-4 py-2 text-sm text-[var(--primary-dark)] focus:border-[var(--primary)] focus:outline-none"
+              />
+            </div>
           </div>
         </div>
 
@@ -318,6 +327,44 @@ export function AddCutOrderForm({ onCancel, onCreated }: Props) {
                         )
                       }
                       className="flex-1 rounded-md border border-[var(--primary-muted)] px-3 py-1.5 text-sm text-[var(--primary-dark)] focus:border-[var(--primary)] focus:outline-none"
+                    />
+                  </div>
+                </div>
+                <div className="mt-2 grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-semibold uppercase tracking-wide text-[var(--primary)]">
+                      SSCC
+                    </label>
+                    <input
+                      value={bundle.sscc}
+                      onChange={(event) =>
+                        setBundles((prev) =>
+                          prev.map((item, itemIndex) =>
+                            itemIndex === index
+                              ? { ...item, sscc: event.target.value }
+                              : item,
+                          ),
+                        )
+                      }
+                      className="mt-1 w-full rounded-md border border-[var(--primary-muted)] px-3 py-1.5 text-sm text-[var(--primary-dark)] focus:border-[var(--primary)] focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold uppercase tracking-wide text-[var(--primary)]">
+                      LUID
+                    </label>
+                    <input
+                      value={bundle.luid}
+                      onChange={(event) =>
+                        setBundles((prev) =>
+                          prev.map((item, itemIndex) =>
+                            itemIndex === index
+                              ? { ...item, luid: event.target.value }
+                              : item,
+                          ),
+                        )
+                      }
+                      className="mt-1 w-full rounded-md border border-[var(--primary-muted)] px-3 py-1.5 text-sm text-[var(--primary-dark)] focus:border-[var(--primary)] focus:outline-none"
                     />
                   </div>
                 </div>
