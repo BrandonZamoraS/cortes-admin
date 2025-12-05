@@ -90,7 +90,7 @@ export function SplitBundleDialog({ bundle, onCancel, onConfirm }: Props) {
         <div className="mt-5 space-y-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-[var(--primary)]">
-              Identificadores del bulto original
+              Identificadores del primer bulto
             </p>
             <div className="mt-2 grid gap-3 sm:grid-cols-2">
               <label className="text-xs text-[var(--primary)]">
@@ -115,7 +115,7 @@ export function SplitBundleDialog({ bundle, onCancel, onConfirm }: Props) {
           </div>
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-[var(--primary)]">
-              Identificadores del nuevo bulto
+              Identificadores del segundo bulto
             </p>
             <div className="mt-2 grid gap-3 sm:grid-cols-2">
               <label className="text-xs text-[var(--primary)]">
