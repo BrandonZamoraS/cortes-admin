@@ -20,14 +20,6 @@ type Props = {
 
 type SplitBundleSubmission = {
   sheets: number;
-  originalIdentifiers: {
-    sscc: string;
-    luid: string;
-  };
-  newBundleIdentifiers: {
-    sscc: string;
-    luid: string;
-  };
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -209,8 +201,6 @@ export function CutOrderPanel({ order, onRequestReload }: Props) {
         bundleId: activeBundle.id,
         orderId: order.id,
         sheets: payload.sheets,
-        originalIdentifiers: payload.originalIdentifiers,
-        newBundleIdentifiers: payload.newBundleIdentifiers,
       });
       setActionFeedback({
         type: "success",
@@ -473,7 +463,7 @@ export function CutOrderPanel({ order, onRequestReload }: Props) {
                 </div>
               </div>
 
-              {/* Additional identifiers row: num bobina, LUID, SSCC */}
+              {/* Num bobina row */}
               <div className="mt-2 grid grid-cols-2 gap-3 text-[13px] text-[var(--primary)] sm:grid-cols-4">
                 <div className="flex flex-col">
                   <span className="text-[11px] font-semibold uppercase tracking-wide">
@@ -487,30 +477,11 @@ export function CutOrderPanel({ order, onRequestReload }: Props) {
                 </div>
                 <div className="flex flex-col">
                   <span className="text-[11px] font-semibold uppercase tracking-wide">
-                    LUID
+                    Material
                   </span>
                   <span className="font-semibold text-[var(--primary-dark)]">
-                    {activeBundle.luid && activeBundle.luid.trim().length > 0
-                      ? activeBundle.luid
-                      : "-"}
+                    {order?.material?.nombre ?? "-"}
                   </span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-[11px] font-semibold uppercase tracking-wide">
-                    SSCC
-                  </span>
-                  <span className="font-semibold text-[var(--primary-dark)]">
-                    {activeBundle.sscc && activeBundle.sscc.trim().length > 0
-                      ? activeBundle.sscc
-                      : "-"}
-                  </span>
-                </div>
-                <div className="flex flex-col" aria-hidden>
-                  {/* empty placeholder for 4th column alignment */}
-                  <span className="text-[11px] font-semibold uppercase tracking-wide">
-                    &nbsp;
-                  </span>
-                  <span className="font-semibold text-[var(--primary-dark)]">&nbsp;</span>
                 </div>
               </div>
 

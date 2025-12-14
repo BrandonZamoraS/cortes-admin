@@ -15,10 +15,14 @@ export type Bundle = {
   workOrder: string;
   availability: string;
   status: string;
-  sscc: string;
-  luid: string;
   num_bobina?: string | null;
   history: BundleHistoryEntry[];
+};
+
+export type Material = {
+  id: string;
+  nombre: string;
+  codigo: string | null;
 };
 
 export type CutOrder = {
@@ -32,4 +36,5 @@ export type CutOrder = {
   completedBundles: number;
   pendingBundles: number;
   bundles: Bundle[];
+  material: Material | null;
 };

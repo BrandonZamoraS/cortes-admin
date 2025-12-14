@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase-client";
-import { Bundle, BundleHistoryEntry, CutOrder } from "@/types/cut-order";
+import { Bundle, BundleHistoryEntry, CutOrder, Material } from "@/types/cut-order";
 
 const DATE_FORMATTER = new Intl.DateTimeFormat("es-AR", {
   day: "2-digit",
@@ -54,9 +54,13 @@ type SupabaseBundle = {
   ubicacion: SupabaseLocation | null;
   historial: SupabaseBundleHistory[] | null;
   creado_en?: string | null;
-  SSCC?: string | null;
-  LUID?: string | null;
   num_bobina?: string | null;
+};
+
+type SupabaseMaterial = {
+  id: string;
+  nombre: string;
+  codigo: string | null;
 };
 
 type SupabaseCutOrder = {
@@ -66,6 +70,7 @@ type SupabaseCutOrder = {
   cantidad_bultos: number | null;
   activo: boolean | null;
   bultos: SupabaseBundle[] | null;
+  material: SupabaseMaterial | null;
 };
 
 const BUNDLE_SPLIT_NUMBER_FACTOR = 1000;
@@ -158,8 +163,6 @@ const mapBundle = (bundle: SupabaseBundle): Bundle => {
     workOrder: latestWorkOrder,
     availability: statusInfo?.availability ?? "Sin estado",
     status: statusInfo?.badge ?? "Sin estado",
-    sscc: bundle.SSCC ?? "",
-    luid: bundle.LUID ?? "",
     num_bobina: bundle.num_bobina ?? "",
     history,
   };
@@ -174,6 +177,13 @@ const mapCutOrder = (order: SupabaseCutOrder): CutOrder => {
   const pendingBundles = Math.max(0, bundleCount - usedBundles);
   const defaultLocation = bundles[0]?.currentLocation ?? "Sin ubicación";
   const code = order.numero_orden ?? "SIN-CODIGO";
+  const material: Material | null = order.material
+    ? {
+        id: order.material.id,
+        nombre: order.material.nombre,
+        codigo: order.material.codigo,
+      }
+    : null;
   return {
     id: String(order.id),
     code,
@@ -185,6 +195,7 @@ const mapCutOrder = (order: SupabaseCutOrder): CutOrder => {
     completedBundles,
     pendingBundles,
     bundles,
+    material,
   };
 };
 
@@ -224,14 +235,13 @@ export async function fetchCutOrders(): Promise<CutOrder[]> {
         fecha,
         cantidad_bultos,
         activo,
+        material:materiales ( id, nombre, codigo ),
         bultos:bultos (
           id,
           numero_bulto,
           cantidad_laminas,
           estado,
           creado_en,
-          SSCC,
-          LUID,
           num_bobina,
           ubicacion:ubicaciones ( id, codigo ),
           historial:historial_bultos (
@@ -263,8 +273,6 @@ export type CreateBundleInput = {
   availability?: string;
   status?: string;
   history?: BundleHistoryEntry[];
-  sscc?: string;
-  luid?: string;
   num_bobina?: string;
 };
 
@@ -275,6 +283,7 @@ export type CreateCutOrderInput = {
   status?: "Activo" | "Inactivo";
   workflowStatus?: string;
   locationFilter?: string;
+  materialId?: string;
   bundles: CreateBundleInput[];
 };
 
@@ -370,6 +379,7 @@ export async function createCutOrder(input: CreateCutOrderInput) {
       fecha: input.date,
       cantidad_bultos: validBundles.length,
       activo: isActive,
+      material_id: input.materialId || null,
     })
     .select("id")
     .single();
@@ -393,8 +403,6 @@ export async function createCutOrder(input: CreateCutOrderInput) {
       ubicacion_id: locationId,
       cantidad_laminas: bundle.sheets ?? 0,
       estado: bundleStatusFromInput(bundle.status),
-      SSCC: bundle.sscc || null,
-      LUID: bundle.luid || null,
       num_bobina: bundle.num_bobina || null,
     };
   });
@@ -432,47 +440,23 @@ export async function createCutOrder(input: CreateCutOrderInput) {
   return orderId;
 }
 
-type BundleIdentifiersInput = {
-  sscc: string;
-  luid: string;
-};
-
 export async function splitBundle({
   bundleId,
   orderId,
   sheets,
-  originalIdentifiers,
-  newBundleIdentifiers,
 }: {
   bundleId: string;
   orderId: string;
   sheets: number;
-  originalIdentifiers: BundleIdentifiersInput;
-  newBundleIdentifiers: BundleIdentifiersInput;
 }) {
   if (sheets <= 0) {
     throw new Error("La cantidad debe ser mayor a cero.");
   }
 
-  const normalizeIdentifier = (value: string) => value.trim();
-  const normalizedOriginalSSCC = normalizeIdentifier(originalIdentifiers.sscc ?? "");
-  const normalizedOriginalLUID = normalizeIdentifier(originalIdentifiers.luid ?? "");
-  const normalizedSplitSSCC = normalizeIdentifier(newBundleIdentifiers.sscc ?? "");
-  const normalizedSplitLUID = normalizeIdentifier(newBundleIdentifiers.luid ?? "");
-
-  if (
-    !normalizedOriginalSSCC ||
-    !normalizedOriginalLUID ||
-    !normalizedSplitSSCC ||
-    !normalizedSplitLUID
-  ) {
-    throw new Error("Debes ingresar el SSCC y LUID para ambos bultos.");
-  }
-
   const { data: bundle, error: fetchError } = await supabase
     .from("bultos")
     .select(
-      "id, orden_corte_id, numero_bulto, cantidad_laminas, ubicacion_id, estado, SSCC, LUID, num_bobina",
+      "id, orden_corte_id, numero_bulto, cantidad_laminas, ubicacion_id, estado, num_bobina",
     )
     .eq("id", bundleId)
     .single();
@@ -524,8 +508,6 @@ export async function splitBundle({
     .from("bultos")
     .update({
       cantidad_laminas: remainingSheets,
-      SSCC: normalizedOriginalSSCC,
-      LUID: normalizedOriginalLUID,
     })
     .eq("id", bundleId);
 
@@ -557,8 +539,6 @@ export async function splitBundle({
       cantidad_laminas: sheets,
       ubicacion_id: bundle.ubicacion_id,
       estado: bundle.estado ?? DEFAULT_BUNDLE_STATUS,
-      SSCC: normalizedSplitSSCC,
-      LUID: normalizedSplitLUID,
       num_bobina: bundle.num_bobina,
     })
     .select("id");

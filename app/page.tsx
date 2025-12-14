@@ -1,11 +1,11 @@
 "use client";
 
-import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CutOrderPanel } from "@/components/cut-order-panel";
 import { AddCutOrderForm } from "@/components/add-cut-order-form";
 import { CutOrder } from "@/types/cut-order";
 import { fetchCutOrders } from "@/lib/services/cut-orders";
+import { Navbar } from "@/components/navbar";
 
 export default function Home() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -78,23 +78,7 @@ export default function Home() {
 
   return (
     <div className="flex h-full w-full flex-col text-[var(--primary-dark)]">
-      <header className="shrink-0 border-b border-[color:rgba(0,0,0,0.08)] bg-[var(--primary)] px-6 py-3 text-[var(--primary-dark)] shadow">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-3xl font-semibold text-white ">
-              Control de Bultos
-            </h1>
-          </div>
-          <Image
-            src="/logo-Comeca.png"
-            alt="Logo Comeca"
-            width={120}
-            height={48}
-            className="h-16 w-auto object-contain mr-4"
-            priority
-          />
-        </div>
-      </header>
+      <Navbar activePage="orders" />
 
       <div className="flex flex-1 overflow-hidden">
         <aside className="flex w-80 flex-col border-r border-[var(--primary-muted)] bg-white p-4">

@@ -3,6 +3,8 @@
 import { FormEvent, useState, useEffect } from "react";
 import { createCutOrder } from "@/lib/services/cut-orders";
 import { fetchLocations, type Location } from "@/lib/services/locations";
+import { fetchMaterials } from "@/lib/services/materials";
+import { Material } from "@/types/cut-order";
 import { LocationSelect } from "@/components/location-select";
 
 type BundleInput = {
@@ -11,8 +13,6 @@ type BundleInput = {
   location: string;
   sheets: string;
   selected: boolean;
-  sscc: string;
-  luid: string;
   num_bobina?: string;
 };
 
@@ -30,8 +30,6 @@ const createBundles = (count: number, previous: BundleInput[] = []) => {
       location: existing?.location ?? "",
       sheets: existing?.sheets ?? "",
       selected: existing?.selected ?? false,
-      sscc: existing?.sscc ?? "",
-      luid: existing?.luid ?? "",
       num_bobina: existing?.num_bobina ?? "",
     };
   });
@@ -53,6 +51,9 @@ export function AddCutOrderForm({ onCancel, onCreated }: Props) {
   } | null>(null);
   const [locations, setLocations] = useState<Location[]>([]);
   const [isLoadingLocations, setIsLoadingLocations] = useState(true);
+  const [materials, setMaterials] = useState<Material[]>([]);
+  const [isLoadingMaterials, setIsLoadingMaterials] = useState(true);
+  const [selectedMaterialId, setSelectedMaterialId] = useState("");
 
   useEffect(() => {
     const loadLocations = async () => {
@@ -71,6 +72,21 @@ export function AddCutOrderForm({ onCancel, onCreated }: Props) {
       }
     };
     loadLocations();
+  }, []);
+
+  useEffect(() => {
+    const loadMaterials = async () => {
+      try {
+        setIsLoadingMaterials(true);
+        const data = await fetchMaterials();
+        setMaterials(data);
+      } catch (error) {
+        console.error("Error al cargar materiales:", error);
+      } finally {
+        setIsLoadingMaterials(false);
+      }
+    };
+    loadMaterials();
   }, []);
 
   const handleBundleCountChange = (value: string) => {
@@ -116,6 +132,7 @@ export function AddCutOrderForm({ onCancel, onCreated }: Props) {
     setBundles(createBundles(5));
     setAllLocation("");
     setSelectionLocation("");
+    setSelectedMaterialId("");
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -134,8 +151,6 @@ export function AddCutOrderForm({ onCancel, onCreated }: Props) {
       name: bundle.name || `Bulto #${index + 1}`,
       currentLocation: bundle.location || allLocation || undefined,
       sheets: bundle.sheets ? Number(bundle.sheets) : undefined,
-      sscc: bundle.sscc,
-      luid: bundle.luid,
       num_bobina: bundle.num_bobina,
     }));
 
@@ -158,6 +173,7 @@ export function AddCutOrderForm({ onCancel, onCreated }: Props) {
         code: orderNumber,
         date: orderDate,
         locationFilter: allLocation || undefined,
+        materialId: selectedMaterialId || undefined,
         bundles: validBundles,
       });
       setSubmitFeedback({
@@ -231,6 +247,24 @@ export function AddCutOrderForm({ onCancel, onCreated }: Props) {
                 className="mt-2 w-full rounded-md border border-[var(--primary-muted)] px-4 py-2 text-sm text-[var(--primary-dark)] focus:border-[var(--primary)] focus:outline-none"
               />
             </div>
+          </div>
+          <div>
+            <label className="text-xs font-semibold uppercase tracking-wide text-[var(--primary)]">
+              Tipo de Material
+            </label>
+            <select
+              value={selectedMaterialId}
+              onChange={(event) => setSelectedMaterialId(event.target.value)}
+              disabled={isLoadingMaterials}
+              className="mt-2 w-full rounded-md border border-[var(--primary-muted)] px-4 py-2 text-sm text-[var(--primary-dark)] focus:border-[var(--primary)] focus:outline-none disabled:bg-gray-100"
+            >
+              <option value="">Selecciona un material</option>
+              {materials.map((material) => (
+                <option key={material.id} value={material.id}>
+                  {material.nombre}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 
@@ -355,43 +389,7 @@ export function AddCutOrderForm({ onCancel, onCreated }: Props) {
                     />
                   </div>
                 </div>
-                <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div>
-                    <label className="text-xs font-semibold uppercase tracking-wide text-[var(--primary)]">
-                      SSCC
-                    </label>
-                    <input
-                      value={bundle.sscc}
-                      onChange={(event) =>
-                        setBundles((prev) =>
-                          prev.map((item, itemIndex) =>
-                            itemIndex === index
-                              ? { ...item, sscc: event.target.value }
-                              : item,
-                          ),
-                        )
-                      }
-                      className="mt-1 w-full rounded-md border border-[var(--primary-muted)] px-3 py-1.5 text-sm text-[var(--primary-dark)] focus:border-[var(--primary)] focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold uppercase tracking-wide text-[var(--primary)]">
-                      LUID
-                    </label>
-                    <input
-                      value={bundle.luid}
-                      onChange={(event) =>
-                        setBundles((prev) =>
-                          prev.map((item, itemIndex) =>
-                            itemIndex === index
-                              ? { ...item, luid: event.target.value }
-                              : item,
-                          ),
-                        )
-                      }
-                      className="mt-1 w-full rounded-md border border-[var(--primary-muted)] px-3 py-1.5 text-sm text-[var(--primary-dark)] focus:border-[var(--primary)] focus:outline-none"
-                    />
-                  </div>
+                <div className="mt-2">
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-wide text-[var(--primary)]">
                       NUM BOBINA
